@@ -18,17 +18,17 @@ CORS(app)
 # ТЕЛЕГРАМ БОТ
 # ============================================================
 
-# Получаем токен из переменных окружения
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+# Получаем токен из переменных окружения (используем bot_token, как у вас настроено)
+bot_token = os.getenv('bot_token')
 
-if not TELEGRAM_TOKEN:
-    logging.error("❌ TELEGRAM_TOKEN не найден в переменных окружения!")
-    logging.error("Пожалуйста, добавьте TELEGRAM_TOKEN в Environment переменные на Render")
+if not bot_token:
+    logging.error("❌ bot_token не найден в переменных окружения!")
+    logging.error("Пожалуйста, добавьте bot_token в Environment переменные на Render")
 else:
-    logging.info("✅ TELEGRAM_TOKEN загружен успешно")
+    logging.info("✅ bot_token загружен успешно")
 
 # Инициализация бота
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
+bot = telebot.TeleBot(bot_token)
 
 # Обработчик команды /start
 @bot.message_handler(commands=['start'])
