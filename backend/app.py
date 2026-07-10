@@ -129,6 +129,10 @@ def send_stats(message):
 @bot.message_handler(func=lambda message: True)
 def echo_all(message):
     try:
+        # Игнорируем команды, чтобы они не обрабатывались дважды
+        if message.text.startswith('/'):
+            return
+        
         response_text = f"""
 🤔 Я тебя не совсем понял.
 
@@ -159,7 +163,7 @@ def home():
     })
 
 # ============================================================
-# WEBHOOK
+# WEBHOOK (исправленный — без прямого ответа)
 # ============================================================
 
 @app.route('/webhook', methods=['POST'])
@@ -174,13 +178,6 @@ def webhook():
                 text = update.message.text
                 chat_id = update.message.chat.id
                 logging.info(f"📝 Получено сообщение: '{text}' от {chat_id}")
-                
-                # 🔥 ГАРАНТИРОВАННЫЙ ОТВЕТ (в обход обработчиков)
-                try:
-                    bot.send_message(chat_id, f"✅ Я получил твое сообщение: '{text}'")
-                    logging.info(f"✅ Ответ отправлен пользователю {chat_id}")
-                except Exception as e:
-                    logging.error(f"❌ Ошибка при отправке ответа: {e}")
             
             # Запускаем обработчики
             bot.process_new_updates([update])
@@ -193,7 +190,7 @@ def webhook():
         return 'Error processing webhook', 500
 
 # ============================================================
-# ДОПОЛНИТЕЛЬНЫЕ API (если нужны)
+# ДОПОЛНИТЕЛЬНЫЕ API
 # ============================================================
 
 @app.route('/api/state', methods=['POST'])
