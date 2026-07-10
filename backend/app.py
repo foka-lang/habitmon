@@ -156,7 +156,7 @@ def home():
         "bot": "Telegram бот запущен и готов к работе"
     })
 
-# Webhook для Telegram — ИСПРАВЛЕННЫЙ
+# Webhook для Telegram — ИСПРАВЛЕННЫЙ (добавлен methods=['POST'])
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
