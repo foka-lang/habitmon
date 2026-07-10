@@ -17,28 +17,13 @@ const state = {
     hasSeenWelcome: false,
     completedToday: 0,
     calendarMonth: new Date().getMonth(),
-    calendarYear: new Date().getFullYear(),
-    hasSubscription: false,
-    subscriptionType: null,
-    subscriptionStart: null,
-    subscriptionEnd: null,
-    trialUsed: false
-};
-
-// ============================================================
-// ЦЕНЫ
-// ============================================================
-const PRICES = {
-    trial: { days: 3, price: 0, label: 'Пробный (3 дня)', habits: 15 },
-    basic: { days: 30, price: 61, label: 'Обычная (30 дней)', habits: 15 },
-    premium: { days: 30, price: 122, label: 'Премиум (30 дней)', habits: 50 }
+    calendarYear: new Date().getFullYear()
 };
 
 // ============================================================
 // 50 ДОСТИЖЕНИЙ
 // ============================================================
 const achievementsList = [
-    // ===== ОСНОВНЫЕ =====
     { id: 'first', name: 'Первый шаг', desc: 'Добавить первую привычку' },
     { id: 'week_streak', name: 'Неделя дисциплины', desc: 'Серия 7 дней' },
     { id: 'month_streak', name: 'Месяц силы воли', desc: 'Серия 30 дней' },
@@ -61,8 +46,6 @@ const achievementsList = [
     { id: 'points_100', name: 'Копилка', desc: 'Накопить 100 баллов' },
     { id: 'points_500', name: 'Банкир', desc: 'Накопить 500 баллов' },
     { id: 'points_1000', name: 'Миллионер', desc: 'Накопить 1000 баллов' },
-
-    // ===== НОВЫЕ 28 ДОСТИЖЕНИЙ =====
     { id: 'morning', name: 'Ранняя пташка', desc: 'Выполнить привычку до 8:00' },
     { id: 'evening', name: 'Совушка', desc: 'Выполнить привычку после 22:00' },
     { id: 'perfect_day', name: 'Идеальный день', desc: 'Выполнить все привычки за день' },
@@ -103,98 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('loading-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
 
-    if (!checkSubscription()) {
-        showSubscriptionScreen();
-        return;
-    }
-
-    setTimeout(function() {
-        document.getElementById('logo-animation').classList.add('hidden');
-        if (!state.hasSeenWelcome) {
-            showWelcome();
-        } else if (!state.hasSeenOnboarding) {
-            startOnboarding();
-        } else {
-            document.getElementById('main-interface').classList.remove('hidden');
-            initApp();
-        }
-    }, 5500);
-
-    setupEventListeners();
-});
-
-// ============================================================
-// ПРОВЕРКА ПОДПИСКИ
-// ============================================================
-function checkSubscription() {
-    if (!state.hasSubscription) return false;
-    if (!state.subscriptionEnd) return false;
-    var now = new Date();
-    var end = new Date(state.subscriptionEnd);
-    if (now > end) {
-        state.hasSubscription = false;
-        state.subscriptionType = null;
-        state.subscriptionEnd = null;
-        saveState();
-        return false;
-    }
-    return true;
-}
-
-function getRemainingDays() {
-    if (!state.subscriptionEnd) return 0;
-    var now = new Date();
-    var end = new Date(state.subscriptionEnd);
-    var diff = end - now;
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-}
-
-// ============================================================
-// ЭКРАН ПОДПИСКИ
-// ============================================================
-function showSubscriptionScreen() {
-    var screen = document.getElementById('subscription-screen');
-    if (!screen) return;
-    screen.classList.remove('hidden');
-    document.getElementById('main-interface').classList.add('hidden');
-    document.getElementById('logo-animation').classList.add('hidden');
-    updateSubscriptionInfo();
-}
-
-function updateSubscriptionInfo() {
-    var trialBtn = document.getElementById('sub-trial-btn');
-    if (trialBtn) {
-        if (state.trialUsed) {
-            trialBtn.disabled = true;
-            trialBtn.textContent = 'Пробный период использован';
-            trialBtn.style.opacity = '0.5';
-        } else {
-            trialBtn.disabled = false;
-            trialBtn.textContent = 'Попробовать 3 дня бесплатно';
-            trialBtn.style.opacity = '1';
-        }
-    }
-}
-
-function activateSubscription(type) {
-    var plan = PRICES[type];
-    if (!plan) return;
-
-    var start = new Date();
-    var end = new Date();
-    end.setDate(end.getDate() + plan.days);
-
-    state.hasSubscription = true;
-    state.subscriptionType = type;
-    state.subscriptionStart = start.toISOString();
-    state.subscriptionEnd = end.toISOString();
-
-    if (type === 'trial') {
-        state.trialUsed = true;
-    }
-
-    saveState();
-    document.getElementById('subscription-screen').classList.add('hidden');
+    // ===== ПРОПУСКАЕМ ПОДПИСКУ =====
     document.getElementById('main-interface').classList.remove('hidden');
 
     setTimeout(function() {
@@ -206,8 +98,10 @@ function activateSubscription(type) {
         } else {
             initApp();
         }
-    }, 500);
-}
+    }, 5500);
+
+    setupEventListeners();
+});
 
 // ============================================================
 // ИНИЦИАЛИЗАЦИЯ
@@ -218,23 +112,6 @@ function initApp() {
     renderAchievements();
     renderLeaderboard();
     renderCalendar();
-    updateRemainingDays();
-}
-
-function updateRemainingDays() {
-    var days = getRemainingDays();
-    var el = document.getElementById('profile-subscription');
-    if (el) {
-        if (state.subscriptionType === 'trial') {
-            el.textContent = 'Пробный (осталось ' + days + ' дн.)';
-        } else if (state.subscriptionType === 'premium') {
-            el.textContent = 'Премиум (осталось ' + days + ' дн.)';
-        } else if (state.subscriptionType === 'basic') {
-            el.textContent = 'Обычная (осталось ' + days + ' дн.)';
-        } else {
-            el.textContent = 'Нет';
-        }
-    }
 }
 
 // ============================================================
@@ -416,28 +293,6 @@ function toggleHabit(index) {
 
 function addHabit(name) {
     if (!name.trim()) { showToast('Введите название'); return; }
-
-    var maxHabits = 5;
-
-    if (state.hasSubscription) {
-        if (state.subscriptionType === 'premium') {
-            maxHabits = 50;
-        } else if (state.subscriptionType === 'basic' || state.subscriptionType === 'trial') {
-            maxHabits = 15;
-        }
-    }
-
-    if (state.habits.length >= maxHabits) {
-        if (state.subscriptionType === 'premium') {
-            showToast('Достигнут лимит привычек (50). Удалите ненужные.');
-        } else if (state.subscriptionType === 'basic' || state.subscriptionType === 'trial') {
-            showToast('Достигнут лимит привычек (15). Для большего выберите премиум.');
-        } else {
-            showToast('Доступно 5 привычек. Оформите подписку для большего количества.');
-        }
-        return;
-    }
-
     state.habits.push({
         id: Date.now(),
         name: name.trim(),
@@ -636,7 +491,6 @@ function updateStats() {
     document.getElementById('total-done').textContent = state.totalCompleted || 0;
     document.getElementById('max-streak').textContent = state.maxStreak || 0;
     renderCalendar();
-    updateRemainingDays();
 }
 
 // ============================================================
@@ -718,18 +572,6 @@ function switchTab(tab) {
 function setupEventListeners() {
     document.getElementById('theme-toggle').addEventListener('click', cycleTheme);
 
-    document.getElementById('sub-trial-btn').addEventListener('click', function() {
-        if (!state.trialUsed) {
-            activateSubscription('trial');
-        }
-    });
-    document.getElementById('sub-basic-btn').addEventListener('click', function() {
-        activateSubscription('basic');
-    });
-    document.getElementById('sub-premium-btn').addEventListener('click', function() {
-        activateSubscription('premium');
-    });
-
     document.getElementById('welcome-start').addEventListener('click', function() {
         state.hasSeenWelcome = true;
         saveState();
@@ -807,7 +649,6 @@ function setupEventListeners() {
         if (e.target === e.currentTarget) document.getElementById('add-habit-modal').classList.add('hidden');
     });
 
-    // ===== ЖИВАЯ ПОДДЕРЖКА =====
     document.getElementById('support-btn').addEventListener('click', function() {
         showSupportModal();
     });
@@ -901,7 +742,6 @@ function renderProfile() {
     document.getElementById('profile-points').textContent = state.points;
     document.getElementById('profile-streak').textContent = state.streak || 0;
     document.getElementById('profile-total').textContent = state.totalCompleted || 0;
-    updateRemainingDays();
 }
 
 function showToast(msg) {
