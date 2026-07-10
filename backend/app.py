@@ -18,7 +18,7 @@ CORS(app)
 # ТЕЛЕГРАМ БОТ
 # ============================================================
 
-# Получаем токен из переменных окружения (используем bot_token, как у вас настроено)
+# Получаем токен из переменных окружения
 bot_token = os.getenv('bot_token')
 
 if not bot_token:
@@ -48,11 +48,11 @@ def send_welcome(message):
 
 Давай начнем твой путь к лучшей версии себя! 💪
 """
-        bot.reply_to(message, welcome_text)
+        bot.send_message(message.chat.id, welcome_text)
         logging.info(f"✅ Команда /start от {user_name} (ID: {message.from_user.id}) обработана успешно")
     except Exception as e:
         logging.error(f"❌ Ошибка в send_welcome: {e}")
-        bot.reply_to(message, "Извините, произошла ошибка. Попробуйте позже.")
+        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
 
 # Обработчик команды /help
 @bot.message_handler(commands=['help'])
@@ -74,11 +74,11 @@ def send_help(message):
 
 Есть вопросы? Обращайтесь к разработчику!
 """
-        bot.reply_to(message, help_text)
+        bot.send_message(message.chat.id, help_text)
         logging.info(f"✅ Команда /help от {message.from_user.id} обработана")
     except Exception as e:
         logging.error(f"❌ Ошибка в send_help: {e}")
-        bot.reply_to(message, "Извините, произошла ошибка. Попробуйте позже.")
+        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
 
 # Обработчик команды /menu
 @bot.message_handler(commands=['menu'])
@@ -96,11 +96,11 @@ def send_menu(message):
 
 В разработке! Скоро будут доступны все функции. 🚀
 """
-        bot.reply_to(message, menu_text)
+        bot.send_message(message.chat.id, menu_text)
         logging.info(f"✅ Команда /menu от {message.from_user.id} обработана")
     except Exception as e:
         logging.error(f"❌ Ошибка в send_menu: {e}")
-        bot.reply_to(message, "Извините, произошла ошибка. Попробуйте позже.")
+        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
 
 # Обработчик команды /stats
 @bot.message_handler(commands=['stats'])
@@ -117,11 +117,11 @@ def send_stats(message):
 
 Продолжай в том же духе! 💪
 """
-        bot.reply_to(message, stats_text)
+        bot.send_message(message.chat.id, stats_text)
         logging.info(f"✅ Команда /stats от {message.from_user.id} обработана")
     except Exception as e:
         logging.error(f"❌ Ошибка в send_stats: {e}")
-        bot.reply_to(message, "Извините, произошла ошибка. Попробуйте позже.")
+        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
 
 # Обработчик текстовых сообщений (если пользователь написал что-то другое)
 @bot.message_handler(func=lambda message: True)
@@ -138,11 +138,11 @@ def echo_all(message):
 /menu - Меню
 /stats - Статистика
 """
-        bot.reply_to(message, response_text)
+        bot.send_message(message.chat.id, response_text)
         logging.info(f"ℹ️ Сообщение от {message.from_user.id}: {message.text}")
     except Exception as e:
         logging.error(f"❌ Ошибка в echo_all: {e}")
-        bot.reply_to(message, "Извините, произошла ошибка. Попробуйте позже.")
+        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
 
 # ============================================================
 # API ЭНДПОИНТЫ
@@ -156,7 +156,7 @@ def home():
         "bot": "Telegram бот запущен и готов к работе"
     })
 
-# Webhook для Telegram — ИСПРАВЛЕННЫЙ (добавлен methods=['POST'])
+# Webhook для Telegram
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
