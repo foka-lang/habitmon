@@ -5,6 +5,7 @@ import sys
 import logging
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from datetime import datetime, timedelta  # ← ДОБАВЛЕНО
 
 # ============================================================
 # НАСТРОЙКА
@@ -29,6 +30,12 @@ bot = telebot.TeleBot(bot_token)
 
 # URL твоего WebApp (корень сайта)
 WEBAPP_URL = "https://habitmon-backend.onrender.com"
+
+# ============================================================
+# ВРЕМЕННОЕ ХРАНИЛИЩЕ ДЛЯ ПОДПИСОК (ДОБАВЛЕНО)
+# ============================================================
+
+user_subscriptions = {}  # {telegram_id: {'trial_used': False, 'plan': None, 'expires': None}}
 
 # ============================================================
 # WEBHOOK
@@ -136,12 +143,10 @@ def webhook():
 
 @app.route('/')
 def home():
-    # index.html лежит на уровень ВЫШЕ папки backend
     return send_from_directory('..', 'index.html')
 
 @app.route('/<path:path>')
 def static_files(path):
-    # Все остальные файлы (css, js) тоже ищем в корне
     return send_from_directory('..', path)
 
 # ============================================================
@@ -196,6 +201,135 @@ def get_achievements():
             {"id": "week_streak", "name": "Неделя дисциплины", "desc": "Серия 7 дней", "unlocked": False}
         ]
     })
+
+# ============================================================
+# НОВЫЕ API ДЛЯ ПОДПИСОК (ДОБАВЛЕНО)
+# ============================================================
+
+@app.route('/api/check-subscription', methods=['POST'])
+def check_subscription():
+    try:
+        data = request.get_json()
+        telegram_id = str(data.get('telegram_id'))
+        
+        if not telegram_id:
+            return jsonify({"error": "telegram_id required"}), 400
+        
+        user_data = user_subscriptions.get(telegram_id, {})
+        
+        is_active = False
+        plan = None
+        
+        if user_data.get('plan') and user_data.get('expires'):
+            expires = datetime.fromisoformat(user_data['expires'])
+            if expires > datetime.now():
+                is_active = True
+                plan = user_data['plan']
+        
+        return jsonify({
+            "status": "ok",
+            "has_trial_used": user_data.get('trial_used', False),
+            "is_active": is_active,
+            "plan": plan,
+            "expires": user_data.get('expires')
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/activate-trial', methods=['POST'])
+def activate_trial():
+    try:
+        data = request.get_json()
+        telegram_id = str(data.get('telegram_id'))
+        
+        if not telegram_id:
+            return jsonify({"error": "telegram_id required"}), 400
+        
+        user_data = user_subscriptions.get(telegram_id, {})
+        if user_data.get('trial_used', False):
+            return jsonify({
+                "status": "error",
+                "message": "Вы уже использовали пробный период"
+            }), 400
+        
+        expires = datetime.now() + timedelta(days=3)
+        
+        user_subscriptions[telegram_id] = {
+            'trial_used': True,
+            'plan': 'trial',
+            'expires': expires.isoformat()
+        }
+        
+        return jsonify({
+            "status": "ok",
+            "message": "Пробный период активирован на 3 дня! 🎉",
+            "expires": expires.isoformat()
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/create-payment', methods=['POST'])
+def create_payment():
+    try:
+        data = request.get_json()
+        telegram_id = str(data.get('telegram_id'))
+        plan = data.get('plan')
+        
+        if not telegram_id or not plan:
+            return jsonify({"error": "telegram_id and plan required"}), 400
+        
+        prices = {
+            'basic': 61,
+            'premium': 122
+        }
+        
+        if plan not in prices:
+            return jsonify({"error": "Invalid plan"}), 400
+        
+        # ВРЕМЕННАЯ ЗАГЛУШКА (для теста)
+        expires = datetime.now() + timedelta(days=30)
+        
+        user_subscriptions[telegram_id] = {
+            'trial_used': user_subscriptions.get(telegram_id, {}).get('trial_used', False),
+            'plan': plan,
+            'expires': expires.isoformat()
+        }
+        
+        return jsonify({
+            "status": "ok",
+            "message": f"Подписка {plan} активирована на 30 дней! 🎉",
+            "plan": plan,
+            "expires": expires.isoformat(),
+            "price": prices[plan]
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/confirm-payment', methods=['POST'])
+def confirm_payment():
+    try:
+        data = request.get_json()
+        telegram_id = str(data.get('telegram_id'))
+        plan = data.get('plan')
+        
+        if not telegram_id or not plan:
+            return jsonify({"error": "telegram_id and plan required"}), 400
+        
+        expires = datetime.now() + timedelta(days=30)
+        
+        user_subscriptions[telegram_id] = {
+            'trial_used': user_subscriptions.get(telegram_id, {}).get('trial_used', False),
+            'plan': plan,
+            'expires': expires.isoformat()
+        }
+        
+        return jsonify({
+            "status": "ok",
+            "message": f"Подписка {plan} активирована! 🎉",
+            "expires": expires.isoformat()
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ============================================================
 # ЗАПУСК
