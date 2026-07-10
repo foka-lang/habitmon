@@ -156,14 +156,16 @@ def home():
         "bot": "Telegram бот запущен и готов к работе"
     })
 
-# Webhook для Telegram
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
         if request.headers.get('content-type') == 'application/json':
             json_string = request.get_data().decode('utf-8')
+            logging.info(f"📩 Получен JSON от Telegram: {json_string[:200]}...")
+            
             update = telebot.types.Update.de_json(json_string)
             bot.process_new_updates([update])
+            
             logging.info(f"✅ Webhook обработал запрос от Telegram")
             return 'OK', 200
         else:
@@ -183,7 +185,6 @@ def get_state():
         if not telegram_id:
             return jsonify({"error": "telegram_id required"}), 400
 
-        # Здесь будет запрос к базе данных
         return jsonify({
             "status": "ok",
             "user": {
@@ -211,7 +212,6 @@ def save_state():
         if not telegram_id or not state:
             return jsonify({"error": "telegram_id and state required"}), 400
 
-        # Здесь будет сохранение в базу данных
         return jsonify({
             "status": "ok",
             "message": "Данные сохранены"
@@ -224,7 +224,6 @@ def save_state():
 @app.route('/api/leaderboard', methods=['GET'])
 def get_leaderboard():
     try:
-        # Демо-данные для лидерборда
         leaderboard = [
             {"username": "Алексей", "points": 450},
             {"username": "Мария", "points": 420},
@@ -250,7 +249,6 @@ def get_achievements():
         if not telegram_id:
             return jsonify({"error": "telegram_id required"}), 400
 
-        # Демо-достижения
         achievements = [
             {"id": "first", "name": "Первый шаг", "desc": "Добавить первую привычку", "unlocked": False},
             {"id": "week_streak", "name": "Неделя дисциплины", "desc": "Серия 7 дней", "unlocked": False},
