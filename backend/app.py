@@ -5,10 +5,10 @@ import sys
 import logging
 import telebot
 
-# Настройка логирования
+# ============================================================
+# НАСТРОЙКА
+# ============================================================
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# Добавляем путь к корню проекта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 app = Flask(__name__)
@@ -17,8 +17,6 @@ CORS(app)
 # ============================================================
 # ТЕЛЕГРАМ БОТ
 # ============================================================
-
-# Получаем токен из переменных окружения
 bot_token = os.getenv('bot_token')
 
 if not bot_token:
@@ -30,14 +28,9 @@ else:
 # Инициализация бота
 bot = telebot.TeleBot(bot_token)
 
-# ТЕСТОВЫЙ ОБРАБОТЧИК - ВРЕМЕННЫЙ (для диагностики)
-@bot.message_handler(func=lambda message: True)
-def test_handler(message):
-    try:
-        logging.info(f"🔵 ТЕСТОВЫЙ ОБРАБОТЧИК СРАБОТАЛ! Текст: {message.text}")
-        bot.send_message(message.chat.id, f"✅ Я получил твое сообщение: {message.text}")
-    except Exception as e:
-        logging.error(f"❌ Ошибка в test_handler: {e}")
+# ============================================================
+# ОБРАБОТЧИКИ КОМАНД
+# ============================================================
 
 # Обработчик команды /start
 @bot.message_handler(commands=['start'])
@@ -132,6 +125,27 @@ def send_stats(message):
         logging.error(f"❌ Ошибка в send_stats: {e}")
         bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
 
+# Обработчик всех остальных сообщений
+@bot.message_handler(func=lambda message: True)
+def echo_all(message):
+    try:
+        response_text = f"""
+🤔 Я тебя не совсем понял.
+
+Ты написал: "{message.text}"
+
+Используй команды:
+/start - Начать
+/help - Помощь
+/menu - Меню
+/stats - Статистика
+"""
+        bot.send_message(message.chat.id, response_text)
+        logging.info(f"ℹ️ Сообщение от {message.from_user.id}: {message.text}")
+    except Exception as e:
+        logging.error(f"❌ Ошибка в echo_all: {e}")
+        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
+
 # ============================================================
 # API ЭНДПОИНТЫ
 # ============================================================
@@ -144,118 +158,92 @@ def home():
         "bot": "Telegram бот запущен и готов к работе"
     })
 
+# ============================================================
+# WEBHOOK
+# ============================================================
+
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
         if request.headers.get('content-type') == 'application/json':
             json_string = request.get_data().decode('utf-8')
-            logging.info(f"📩 Получен JSON от Telegram: {json_string[:200]}...")
-            
             update = telebot.types.Update.de_json(json_string)
             
-            # Логируем текст сообщения
+            # Логируем, что пришло от Telegram
             if update.message:
                 text = update.message.text
-                logging.info(f"📝 Текст сообщения: '{text}'")
-                logging.info(f"👤 От пользователя: {update.message.from_user.id}")
+                chat_id = update.message.chat.id
+                logging.info(f"📝 Получено сообщение: '{text}' от {chat_id}")
+                
+                # 🔥 ГАРАНТИРОВАННЫЙ ОТВЕТ (в обход обработчиков)
+                try:
+                    bot.send_message(chat_id, f"✅ Я получил твое сообщение: '{text}'")
+                    logging.info(f"✅ Ответ отправлен пользователю {chat_id}")
+                except Exception as e:
+                    logging.error(f"❌ Ошибка при отправке ответа: {e}")
             
+            # Запускаем обработчики
             bot.process_new_updates([update])
             
-            logging.info(f"✅ Webhook обработал запрос от Telegram")
             return 'OK', 200
         else:
-            logging.warning(f"⚠️ Webhook получил запрос с неправильным content-type: {request.headers.get('content-type')}")
             return 'Unsupported content type', 400
     except Exception as e:
         logging.error(f"❌ Ошибка в webhook: {e}")
         return 'Error processing webhook', 500
 
-# Получение состояния пользователя
+# ============================================================
+# ДОПОЛНИТЕЛЬНЫЕ API (если нужны)
+# ============================================================
+
 @app.route('/api/state', methods=['POST'])
 def get_state():
     try:
         data = request.get_json()
         telegram_id = data.get('telegram_id')
-
         if not telegram_id:
             return jsonify({"error": "telegram_id required"}), 400
-
         return jsonify({
             "status": "ok",
-            "user": {
-                "telegram_id": telegram_id,
-                "username": "test_user",
-                "level": 1,
-                "xp": 0,
-                "points": 0
-            },
+            "user": {"telegram_id": telegram_id, "username": "test_user", "level": 1, "xp": 0, "points": 0},
             "habits": [],
             "subscription": None
         })
     except Exception as e:
-        logging.error(f"❌ Ошибка в get_state: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Сохранение состояния пользователя
 @app.route('/api/state/save', methods=['POST'])
 def save_state():
     try:
         data = request.get_json()
         telegram_id = data.get('telegram_id')
         state = data.get('state')
-
         if not telegram_id or not state:
             return jsonify({"error": "telegram_id and state required"}), 400
-
-        return jsonify({
-            "status": "ok",
-            "message": "Данные сохранены"
-        })
+        return jsonify({"status": "ok", "message": "Данные сохранены"})
     except Exception as e:
-        logging.error(f"❌ Ошибка в save_state: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Получение лидерборда
 @app.route('/api/leaderboard', methods=['GET'])
 def get_leaderboard():
-    try:
-        leaderboard = [
+    return jsonify({
+        "status": "ok",
+        "leaderboard": [
             {"username": "Алексей", "points": 450},
             {"username": "Мария", "points": 420},
-            {"username": "Игорь", "points": 380},
-            {"username": "Ольга", "points": 300},
-            {"username": "Сергей", "points": 280}
+            {"username": "Игорь", "points": 380}
         ]
-        return jsonify({
-            "status": "ok",
-            "leaderboard": leaderboard
-        })
-    except Exception as e:
-        logging.error(f"❌ Ошибка в get_leaderboard: {e}")
-        return jsonify({"error": str(e)}), 500
+    })
 
-# Получение достижений пользователя
 @app.route('/api/achievements', methods=['POST'])
 def get_achievements():
-    try:
-        data = request.get_json()
-        telegram_id = data.get('telegram_id')
-
-        if not telegram_id:
-            return jsonify({"error": "telegram_id required"}), 400
-
-        achievements = [
+    return jsonify({
+        "status": "ok",
+        "achievements": [
             {"id": "first", "name": "Первый шаг", "desc": "Добавить первую привычку", "unlocked": False},
-            {"id": "week_streak", "name": "Неделя дисциплины", "desc": "Серия 7 дней", "unlocked": False},
-            {"id": "month_streak", "name": "Месяц силы воли", "desc": "Серия 30 дней", "unlocked": False}
+            {"id": "week_streak", "name": "Неделя дисциплины", "desc": "Серия 7 дней", "unlocked": False}
         ]
-        return jsonify({
-            "status": "ok",
-            "achievements": achievements
-        })
-    except Exception as e:
-        logging.error(f"❌ Ошибка в get_achievements: {e}")
-        return jsonify({"error": str(e)}), 500
+    })
 
 # ============================================================
 # ЗАПУСК
@@ -265,5 +253,5 @@ if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     logging.info(f"🚀 Запускаем Flask на порту {port}")
     logging.info(f"🤖 Telegram бот инициализирован")
-    logging.info(f"📡 Webhook будет доступен по адресу: https://habitmon-backend.onrender.com/webhook")
+    logging.info(f"📡 Webhook: https://habitmon-backend.onrender.com/webhook")
     app.run(host='0.0.0.0', port=port, debug=False)
