@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os
 import sys
 import logging
+import telebot
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -13,6 +14,135 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 app = Flask(__name__)
 CORS(app)
 
+# ============================================================
+# ТЕЛЕГРАМ БОТ
+# ============================================================
+
+# Получаем токен из переменных окружения
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+
+if not TELEGRAM_TOKEN:
+    logging.error("❌ TELEGRAM_TOKEN не найден в переменных окружения!")
+    logging.error("Пожалуйста, добавьте TELEGRAM_TOKEN в Environment переменные на Render")
+else:
+    logging.info("✅ TELEGRAM_TOKEN загружен успешно")
+
+# Инициализация бота
+bot = telebot.TeleBot(TELEGRAM_TOKEN)
+
+# Обработчик команды /start
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    try:
+        user_name = message.from_user.first_name if message.from_user.first_name else "Пользователь"
+        welcome_text = f"""
+🎯 Привет, {user_name}! 
+
+Я бот HabitMon. Помогаю отслеживать привычки и достигать целей!
+
+📌 Доступные команды:
+/start - Показать это сообщение
+/help - Помощь
+/menu - Главное меню
+/stats - Моя статистика
+
+Давай начнем твой путь к лучшей версии себя! 💪
+"""
+        bot.reply_to(message, welcome_text)
+        logging.info(f"✅ Команда /start от {user_name} (ID: {message.from_user.id}) обработана успешно")
+    except Exception as e:
+        logging.error(f"❌ Ошибка в send_welcome: {e}")
+        bot.reply_to(message, "Извините, произошла ошибка. Попробуйте позже.")
+
+# Обработчик команды /help
+@bot.message_handler(commands=['help'])
+def send_help(message):
+    try:
+        help_text = """
+🤖 Помощь по боту HabitMon:
+
+/start - Запустить бота
+/help - Показать это сообщение
+/menu - Открыть главное меню
+/stats - Показать мою статистику
+
+📊 Бот помогает:
+- Отслеживать ежедневные привычки
+- Получать напоминания
+- Следить за прогрессом
+- Получать достижения
+
+Есть вопросы? Обращайтесь к разработчику!
+"""
+        bot.reply_to(message, help_text)
+        logging.info(f"✅ Команда /help от {message.from_user.id} обработана")
+    except Exception as e:
+        logging.error(f"❌ Ошибка в send_help: {e}")
+        bot.reply_to(message, "Извините, произошла ошибка. Попробуйте позже.")
+
+# Обработчик команды /menu
+@bot.message_handler(commands=['menu'])
+def send_menu(message):
+    try:
+        menu_text = """
+📋 ГЛАВНОЕ МЕНЮ:
+
+1️⃣ Мои привычки
+2️⃣ Добавить привычку
+3️⃣ Моя статистика
+4️⃣ Достижения
+5️⃣ Лидерборд
+6️⃣ Настройки
+
+В разработке! Скоро будут доступны все функции. 🚀
+"""
+        bot.reply_to(message, menu_text)
+        logging.info(f"✅ Команда /menu от {message.from_user.id} обработана")
+    except Exception as e:
+        logging.error(f"❌ Ошибка в send_menu: {e}")
+        bot.reply_to(message, "Извините, произошла ошибка. Попробуйте позже.")
+
+# Обработчик команды /stats
+@bot.message_handler(commands=['stats'])
+def send_stats(message):
+    try:
+        stats_text = """
+📊 МОЯ СТАТИСТИКА:
+
+🔹 Уровень: 1
+🔹 Опыт: 0 / 100
+🔹 Очки: 0
+🔹 Дней в серии: 0
+🔹 Выполнено привычек: 0
+
+Продолжай в том же духе! 💪
+"""
+        bot.reply_to(message, stats_text)
+        logging.info(f"✅ Команда /stats от {message.from_user.id} обработана")
+    except Exception as e:
+        logging.error(f"❌ Ошибка в send_stats: {e}")
+        bot.reply_to(message, "Извините, произошла ошибка. Попробуйте позже.")
+
+# Обработчик текстовых сообщений (если пользователь написал что-то другое)
+@bot.message_handler(func=lambda message: True)
+def echo_all(message):
+    try:
+        response_text = f"""
+🤔 Я тебя не совсем понял.
+
+Ты написал: "{message.text}"
+
+Чтобы я понимал твои команды, используй кнопки меню или команды:
+/start - Начать
+/help - Помощь
+/menu - Меню
+/stats - Статистика
+"""
+        bot.reply_to(message, response_text)
+        logging.info(f"ℹ️ Сообщение от {message.from_user.id}: {message.text}")
+    except Exception as e:
+        logging.error(f"❌ Ошибка в echo_all: {e}")
+        bot.reply_to(message, "Извините, произошла ошибка. Попробуйте позже.")
 
 # ============================================================
 # API ЭНДПОИНТЫ
@@ -23,9 +153,25 @@ def home():
     return jsonify({
         "status": "ok",
         "message": "HabitMon API работает!",
-        "bot": "запущен отдельно"
+        "bot": "Telegram бот запущен и готов к работе"
     })
 
+# Webhook для Telegram
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    try:
+        if request.headers.get('content-type') == 'application/json':
+            json_string = request.get_data().decode('utf-8')
+            update = telebot.types.Update.de_json(json_string)
+            bot.process_new_updates([update])
+            logging.info(f"✅ Webhook обработал запрос от Telegram")
+            return 'OK', 200
+        else:
+            logging.warning(f"⚠️ Webhook получил запрос с неправильным content-type: {request.headers.get('content-type')}")
+            return 'Unsupported content type', 400
+    except Exception as e:
+        logging.error(f"❌ Ошибка в webhook: {e}")
+        return 'Error processing webhook', 500
 
 # Получение состояния пользователя
 @app.route('/api/state', methods=['POST'])
@@ -51,9 +197,8 @@ def get_state():
             "subscription": None
         })
     except Exception as e:
-        logging.error(f"Error in get_state: {e}")
+        logging.error(f"❌ Ошибка в get_state: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 # Сохранение состояния пользователя
 @app.route('/api/state/save', methods=['POST'])
@@ -72,9 +217,8 @@ def save_state():
             "message": "Данные сохранены"
         })
     except Exception as e:
-        logging.error(f"Error in save_state: {e}")
+        logging.error(f"❌ Ошибка в save_state: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 # Получение лидерборда
 @app.route('/api/leaderboard', methods=['GET'])
@@ -93,9 +237,8 @@ def get_leaderboard():
             "leaderboard": leaderboard
         })
     except Exception as e:
-        logging.error(f"Error in get_leaderboard: {e}")
+        logging.error(f"❌ Ошибка в get_leaderboard: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 # Получение достижений пользователя
 @app.route('/api/achievements', methods=['POST'])
@@ -118,14 +261,16 @@ def get_achievements():
             "achievements": achievements
         })
     except Exception as e:
-        logging.error(f"Error in get_achievements: {e}")
+        logging.error(f"❌ Ошибка в get_achievements: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 # ============================================================
 # ЗАПУСК
 # ============================================================
+
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     logging.info(f"🚀 Запускаем Flask на порту {port}")
+    logging.info(f"🤖 Telegram бот инициализирован")
+    logging.info(f"📡 Webhook будет доступен по адресу: https://habitmon-backend.onrender.com/webhook")
     app.run(host='0.0.0.0', port=port, debug=False)
