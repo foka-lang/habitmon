@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import os
 import sys
@@ -12,7 +12,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)
 
 # ============================================================
@@ -28,11 +28,10 @@ else:
 bot = telebot.TeleBot(bot_token)
 
 # URL твоего WebApp (мини-приложения)
-# Если у тебя фронтенд лежит в том же репозитории, он доступен по тому же адресу
-WEBAPP_URL = "https://habitmon-backend.onrender.com"  # Или отдельный URL, если фронтенд отдельно
+WEBAPP_URL = "https://habitmon-backend.onrender.com"  # Твой основной URL
 
 # ============================================================
-# ВСЯ ЛОГИКА БОТА В WEBHOOK
+# WEBHOOK
 # ============================================================
 
 @app.route('/webhook', methods=['POST'])
@@ -54,49 +53,37 @@ def webhook():
         logging.info(f"📝 Получено: '{text}' от {chat_id}")
         
         # ============================================================
-        # СОЗДАЁМ КРАСИВЫЕ КНОПКИ
+        # ОТВЕТЫ
         # ============================================================
         
         if text.startswith('/start'):
-            # Создаём клавиатуру с кнопками
-            keyboard = InlineKeyboardMarkup(row_width=2)
+            # Клавиатура с кнопками
+            keyboard = InlineKeyboardMarkup(row_width=1)
             
-            # Кнопка для открытия приложения
+            # Кнопка "Открыть приложение"
             webapp_btn = InlineKeyboardButton(
                 text="🚀 Открыть приложение",
                 web_app=WebAppInfo(url=WEBAPP_URL)
             )
             
-            # Кнопки с командами
-            habits_btn = InlineKeyboardButton("📋 Мои привычки", callback_data="habits")
-            stats_btn = InlineKeyboardButton("📊 Статистика", callback_data="stats")
-            menu_btn = InlineKeyboardButton("📌 Меню", callback_data="menu")
+            # Кнопка "Помощь"
             help_btn = InlineKeyboardButton("❓ Помощь", callback_data="help")
             
-            # Добавляем кнопки в клавиатуру
-            keyboard.add(webapp_btn)
-            keyboard.add(habits_btn, stats_btn)
-            keyboard.add(menu_btn, help_btn)
+            keyboard.add(webapp_btn, help_btn)
             
-            # Текст приветствия
+            # Текст приветствия (только то, что ты просил)
             welcome_text = f"""
 🎯 Привет, {user_name}! 
 
-Я бот HabitMon. Помогаю отслеживать привычки и достигать целей!
-
-Нажми на кнопку ниже, чтобы открыть приложение, или используй команды:
-/start - Показать это сообщение
-/help - Помощь
-/menu - Главное меню
-/stats - Моя статистика
+Я бот HabitMon. Помогаю отслеживать привычки и достигать целей! 
 
 Давай начнем твой путь к лучшей версии себя! 💪
 """
             
             bot.send_message(chat_id, welcome_text, reply_markup=keyboard)
-            logging.info(f"✅ Отправлено приветствие с кнопками для {chat_id}")
+            logging.info(f"✅ Отправлено приветствие для {chat_id}")
             
-        elif text.startswith('/help'):
+        elif text.startswith('/help') or text == '❓ Помощь':
             keyboard = InlineKeyboardMarkup(row_width=1)
             webapp_btn = InlineKeyboardButton(
                 text="🚀 Открыть приложение",
@@ -109,8 +96,6 @@ def webhook():
 
 /start - Запустить бота
 /help - Показать это сообщение
-/menu - Открыть главное меню
-/stats - Показать мою статистику
 
 📊 Бот помогает:
 - Отслеживать ежедневные привычки
@@ -120,51 +105,6 @@ def webhook():
 """
             bot.send_message(chat_id, help_text, reply_markup=keyboard)
             logging.info(f"✅ Отправлена помощь для {chat_id}")
-            
-        elif text.startswith('/menu'):
-            keyboard = InlineKeyboardMarkup(row_width=1)
-            webapp_btn = InlineKeyboardButton(
-                text="🚀 Открыть приложение",
-                web_app=WebAppInfo(url=WEBAPP_URL)
-            )
-            keyboard.add(webapp_btn)
-            
-            menu_text = """
-📋 ГЛАВНОЕ МЕНЮ:
-
-1️⃣ Мои привычки
-2️⃣ Добавить привычку
-3️⃣ Моя статистика
-4️⃣ Достижения
-5️⃣ Лидерборд
-6️⃣ Настройки
-
-Нажми на кнопку ниже, чтобы открыть приложение! 🚀
-"""
-            bot.send_message(chat_id, menu_text, reply_markup=keyboard)
-            logging.info(f"✅ Отправлено меню для {chat_id}")
-            
-        elif text.startswith('/stats'):
-            keyboard = InlineKeyboardMarkup(row_width=1)
-            webapp_btn = InlineKeyboardButton(
-                text="🚀 Открыть приложение",
-                web_app=WebAppInfo(url=WEBAPP_URL)
-            )
-            keyboard.add(webapp_btn)
-            
-            stats_text = """
-📊 МОЯ СТАТИСТИКА:
-
-🔹 Уровень: 1
-🔹 Опыт: 0 / 100
-🔹 Очки: 0
-🔹 Дней в серии: 0
-🔹 Выполнено привычек: 0
-
-Продолжай в том же духе! 💪
-"""
-            bot.send_message(chat_id, stats_text, reply_markup=keyboard)
-            logging.info(f"✅ Отправлена статистика для {chat_id}")
             
         else:
             keyboard = InlineKeyboardMarkup(row_width=1)
@@ -182,8 +122,6 @@ def webhook():
 Используй команды:
 /start - Начать
 /help - Помощь
-/menu - Меню
-/stats - Статистика
 
 Или нажми на кнопку ниже, чтобы открыть приложение! 🚀
 """
@@ -197,26 +135,29 @@ def webhook():
         return 'Error', 500
 
 # ============================================================
-# ОБРАБОТКА НАЖАТИЙ НА КНОПКИ (callback)
+# ОБРАБОТКА НАЖАТИЙ НА КНОПКИ
 # ============================================================
 
 @app.route('/webhook', methods=['POST'])
 def webhook_callback():
-    # Тут можно обрабатывать нажатия на кнопки (callback_data)
-    # Но для простоты пока пропустим
-    pass
+    # Пока просто возвращаем OK
+    return 'OK', 200
 
 # ============================================================
-# API ЭНДПОИНТЫ
+# ФРОНТЕНД (HTML/CSS/JS)
 # ============================================================
 
 @app.route('/')
 def home():
-    return jsonify({
-        "status": "ok",
-        "message": "HabitMon API работает!",
-        "bot": "Telegram бот запущен и готов к работе"
-    })
+    return send_from_directory('../frontend', 'index.html')
+
+@app.route('/<path:path>')
+def static_files(path):
+    return send_from_directory('../frontend', path)
+
+# ============================================================
+# API ЭНДПОИНТЫ
+# ============================================================
 
 @app.route('/api/state', methods=['POST'])
 def get_state():
