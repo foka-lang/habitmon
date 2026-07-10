@@ -12,7 +12,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-app = Flask(__name__, static_folder='../frontend', static_url_path='')
+app = Flask(__name__)
 CORS(app)
 
 # ============================================================
@@ -27,8 +27,8 @@ else:
 
 bot = telebot.TeleBot(bot_token)
 
-# URL твоего WebApp (мини-приложения)
-WEBAPP_URL = "https://habitmon-backend.onrender.com"  # Твой основной URL
+# URL твоего WebApp (корень сайта)
+WEBAPP_URL = "https://habitmon-backend.onrender.com"
 
 # ============================================================
 # WEBHOOK
@@ -57,21 +57,17 @@ def webhook():
         # ============================================================
         
         if text.startswith('/start'):
-            # Клавиатура с кнопками
             keyboard = InlineKeyboardMarkup(row_width=1)
             
-            # Кнопка "Открыть приложение"
             webapp_btn = InlineKeyboardButton(
                 text="🚀 Открыть приложение",
                 web_app=WebAppInfo(url=WEBAPP_URL)
             )
             
-            # Кнопка "Помощь"
             help_btn = InlineKeyboardButton("❓ Помощь", callback_data="help")
             
             keyboard.add(webapp_btn, help_btn)
             
-            # Текст приветствия (только то, что ты просил)
             welcome_text = f"""
 🎯 Привет, {user_name}! 
 
@@ -135,25 +131,18 @@ def webhook():
         return 'Error', 500
 
 # ============================================================
-# ОБРАБОТКА НАЖАТИЙ НА КНОПКИ
-# ============================================================
-
-@app.route('/webhook', methods=['POST'])
-def webhook_callback():
-    # Пока просто возвращаем OK
-    return 'OK', 200
-
-# ============================================================
-# ФРОНТЕНД (HTML/CSS/JS)
+# ФРОНТЕНД (index.html в КОРНЕ проекта)
 # ============================================================
 
 @app.route('/')
 def home():
-    return send_from_directory('../frontend', 'index.html')
+    # index.html лежит на уровень ВЫШЕ папки backend
+    return send_from_directory('..', 'index.html')
 
 @app.route('/<path:path>')
 def static_files(path):
-    return send_from_directory('../frontend', path)
+    # Все остальные файлы (css, js) тоже ищем в корне
+    return send_from_directory('..', path)
 
 # ============================================================
 # API ЭНДПОИНТЫ
