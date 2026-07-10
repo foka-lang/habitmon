@@ -924,3 +924,131 @@ function showToast(msg) {
         if (toast.parentNode) toast.remove();
     }, 3000);
 }
+
+// ============================================================
+// ПОДПИСКИ (ДОБАВЛЕНО)
+// ============================================================
+
+const SUBSCRIPTION_PRICES = {
+    trial: { days: 3, price: 0, label: 'Пробный (3 дня)', habits: 15 },
+    basic: { days: 30, price: 61, label: 'Обычная (30 дней)', habits: 15 },
+    premium: { days: 30, price: 122, label: 'Премиум (30 дней)', habits: 50 }
+};
+
+// Проверка подписки через API
+async function checkSubscriptionAPI(telegram_id) {
+    try {
+        const response = await fetch('/api/check-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telegram_id: telegram_id })
+        });
+        const data = await response.json();
+        return data;
+    } catch (e) {
+        console.error('Ошибка проверки подписки:', e);
+        return null;
+    }
+}
+
+// Активация пробного периода
+async function activateTrialAPI(telegram_id) {
+    try {
+        const response = await fetch('/api/activate-trial', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telegram_id: telegram_id })
+        });
+        const data = await response.json();
+        return data;
+    } catch (e) {
+        console.error('Ошибка активации пробного периода:', e);
+        return null;
+    }
+}
+
+// Создание платежа
+async function createPaymentAPI(telegram_id, plan) {
+    try {
+        const response = await fetch('/api/create-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telegram_id: telegram_id, plan: plan })
+        });
+        const data = await response.json();
+        return data;
+    } catch (e) {
+        console.error('Ошибка создания платежа:', e);
+        return null;
+    }
+}
+
+// ============================================================
+// ОБРАБОТЧИКИ КНОПОК ПОДПИСКИ (ДОБАВЛЕНО)
+// ============================================================
+
+function setupSubscriptionHandlers() {
+    const trialBtn = document.getElementById('sub-trial-btn');
+    const basicBtn = document.getElementById('sub-basic-btn');
+    const premiumBtn = document.getElementById('sub-premium-btn');
+
+    if (trialBtn) {
+        trialBtn.addEventListener('click', function() {
+            const telegram_id = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'test_user';
+            activateTrialAPI(telegram_id).then(data => {
+                if (data && data.status === 'ok') {
+                    showToast('Пробный период активирован! 🎉');
+                    document.getElementById('subscription-screen').classList.add('hidden');
+                    document.getElementById('main-interface').classList.remove('hidden');
+                    state.hasSubscription = true;
+                    state.subscriptionType = 'trial';
+                    state.subscriptionEnd = data.expires;
+                    saveState();
+                    initApp();
+                } else {
+                    showToast(data?.message || 'Ошибка активации');
+                }
+            });
+        });
+    }
+
+    if (basicBtn) {
+        basicBtn.addEventListener('click', function() {
+            const telegram_id = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'test_user';
+            createPaymentAPI(telegram_id, 'basic').then(data => {
+                if (data && data.status === 'ok') {
+                    showToast('Обычная подписка активирована! 🎉');
+                    document.getElementById('subscription-screen').classList.add('hidden');
+                    document.getElementById('main-interface').classList.remove('hidden');
+                    state.hasSubscription = true;
+                    state.subscriptionType = 'basic';
+                    state.subscriptionEnd = data.expires;
+                    saveState();
+                    initApp();
+                } else {
+                    showToast(data?.message || 'Ошибка оплаты');
+                }
+            });
+        });
+    }
+
+    if (premiumBtn) {
+        premiumBtn.addEventListener('click', function() {
+            const telegram_id = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'test_user';
+            createPaymentAPI(telegram_id, 'premium').then(data => {
+                if (data && data.status === 'ok') {
+                    showToast('Премиум подписка активирована! 🎉');
+                    document.getElementById('subscription-screen').classList.add('hidden');
+                    document.getElementById('main-interface').classList.remove('hidden');
+                    state.hasSubscription = true;
+                    state.subscriptionType = 'premium';
+                    state.subscriptionEnd = data.expires;
+                    saveState();
+                    initApp();
+                } else {
+                    showToast(data?.message || 'Ошибка оплаты');
+                }
+            });
+        });
+    }
+}
