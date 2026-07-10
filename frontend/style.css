@@ -825,7 +825,10 @@ header {
     border: 1px solid var(--border-color);
 }
 
-/* ===== ЭКРАН ПОДПИСКИ ===== */
+/* ============================================================
+   ЭКРАН ПОДПИСКИ (ДОБАВЛЕНО)
+   ============================================================ */
+
 .subscription-screen {
     position: fixed;
     top: 0;
@@ -905,22 +908,16 @@ header {
     color: #ff6b8a;
     margin-top: 2px;
 }
-.sub-plan-price::after {
-    content: '';
-}
 .sub-plan-days {
     font-size: 13px;
     color: var(--text-secondary);
 }
 .sub-note {
     font-size: 12px;
-    color: var(--text-light);
+    color: var(--text-secondary);
     font-style: italic;
 }
 
-/* ============================================================
-   ПРЕМИУМ — ЗОЛОТОЕ СВЕЧЕНИЕ
-============================================================ */
 .sub-plan.premium-plan {
     border-color: #ffd700;
     background: rgba(255, 215, 0, 0.04);
@@ -928,15 +925,12 @@ header {
     overflow: hidden;
     animation: premiumGlow 2.5s ease-in-out infinite;
 }
-
 .sub-plan.premium-plan .sub-plan-name {
     color: #ffd700;
 }
-
 .sub-plan.premium-plan .sub-plan-price {
     color: #ffd700;
 }
-
 @keyframes premiumGlow {
     0%, 100% {
         box-shadow: 0 0 10px rgba(255, 215, 0, 0.1), inset 0 0 10px rgba(255, 215, 0, 0.02);
@@ -947,12 +941,10 @@ header {
         border-color: #ffed4a;
     }
 }
-
 .sub-plan.premium-plan .sub-plan-badge svg {
     stroke: #ffd700;
     animation: starSpin 4s linear infinite;
 }
-
 @keyframes starSpin {
     0% { transform: rotate(0deg) scale(1); }
     50% { transform: rotate(180deg) scale(1.1); }
