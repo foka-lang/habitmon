@@ -21,23 +21,43 @@ bot_token = os.getenv('bot_token')
 
 if not bot_token:
     logging.error("❌ bot_token не найден в переменных окружения!")
-    logging.error("Пожалуйста, добавьте bot_token в Environment переменные на Render")
 else:
     logging.info("✅ bot_token загружен успешно")
 
-# Инициализация бота
 bot = telebot.TeleBot(bot_token)
 
 # ============================================================
-# ОБРАБОТЧИКИ КОМАНД
+# ВСЯ ЛОГИКА БОТА В ОДНОМ МЕСТЕ (webhook)
 # ============================================================
 
-# Обработчик команды /start
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
+@app.route('/webhook', methods=['POST'])
+def webhook():
     try:
-        user_name = message.from_user.first_name if message.from_user.first_name else "Пользователь"
-        welcome_text = f"""
+        if request.headers.get('content-type') != 'application/json':
+            return 'Unsupported content type', 400
+        
+        # Получаем данные от Telegram
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        
+        if not update.message:
+            return 'OK', 200
+        
+        # Извлекаем данные
+        text = update.message.text or ""
+        chat_id = update.message.chat.id
+        user_name = update.message.from_user.first_name or "Пользователь"
+        
+        logging.info(f"📝 Получено: '{text}' от {chat_id}")
+        
+        # ============================================================
+        # ОБРАБОТКА КОМАНД (прямая, без @bot.message_handler)
+        # ============================================================
+        
+        response_text = ""
+        
+        if text.startswith('/start'):
+            response_text = f"""
 🎯 Привет, {user_name}! 
 
 Я бот HabitMon. Помогаю отслеживать привычки и достигать целей!
@@ -50,17 +70,10 @@ def send_welcome(message):
 
 Давай начнем твой путь к лучшей версии себя! 💪
 """
-        bot.send_message(message.chat.id, welcome_text)
-        logging.info(f"✅ Команда /start от {user_name} (ID: {message.from_user.id}) обработана успешно")
-    except Exception as e:
-        logging.error(f"❌ Ошибка в send_welcome: {e}")
-        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
-
-# Обработчик команды /help
-@bot.message_handler(commands=['help'])
-def send_help(message):
-    try:
-        help_text = """
+            logging.info(f"✅ Обработана команда /start для {chat_id}")
+            
+        elif text.startswith('/help'):
+            response_text = """
 🤖 Помощь по боту HabitMon:
 
 /start - Запустить бота
@@ -73,20 +86,11 @@ def send_help(message):
 - Получать напоминания
 - Следить за прогрессом
 - Получать достижения
-
-Есть вопросы? Обращайтесь к разработчику!
 """
-        bot.send_message(message.chat.id, help_text)
-        logging.info(f"✅ Команда /help от {message.from_user.id} обработана")
-    except Exception as e:
-        logging.error(f"❌ Ошибка в send_help: {e}")
-        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
-
-# Обработчик команды /menu
-@bot.message_handler(commands=['menu'])
-def send_menu(message):
-    try:
-        menu_text = """
+            logging.info(f"✅ Обработана команда /help для {chat_id}")
+            
+        elif text.startswith('/menu'):
+            response_text = """
 📋 ГЛАВНОЕ МЕНЮ:
 
 1️⃣ Мои привычки
@@ -98,17 +102,10 @@ def send_menu(message):
 
 В разработке! Скоро будут доступны все функции. 🚀
 """
-        bot.send_message(message.chat.id, menu_text)
-        logging.info(f"✅ Команда /menu от {message.from_user.id} обработана")
-    except Exception as e:
-        logging.error(f"❌ Ошибка в send_menu: {e}")
-        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
-
-# Обработчик команды /stats
-@bot.message_handler(commands=['stats'])
-def send_stats(message):
-    try:
-        stats_text = """
+            logging.info(f"✅ Обработана команда /menu для {chat_id}")
+            
+        elif text.startswith('/stats'):
+            response_text = """
 📊 МОЯ СТАТИСТИКА:
 
 🔹 Уровень: 1
@@ -119,24 +116,13 @@ def send_stats(message):
 
 Продолжай в том же духе! 💪
 """
-        bot.send_message(message.chat.id, stats_text)
-        logging.info(f"✅ Команда /stats от {message.from_user.id} обработана")
-    except Exception as e:
-        logging.error(f"❌ Ошибка в send_stats: {e}")
-        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
-
-# Обработчик всех остальных сообщений
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-    try:
-        # Игнорируем команды, чтобы они не обрабатывались дважды
-        if message.text.startswith('/'):
-            return
-        
-        response_text = f"""
+            logging.info(f"✅ Обработана команда /stats для {chat_id}")
+            
+        else:
+            response_text = f"""
 🤔 Я тебя не совсем понял.
 
-Ты написал: "{message.text}"
+Ты написал: "{text}"
 
 Используй команды:
 /start - Начать
@@ -144,11 +130,21 @@ def echo_all(message):
 /menu - Меню
 /stats - Статистика
 """
-        bot.send_message(message.chat.id, response_text)
-        logging.info(f"ℹ️ Сообщение от {message.from_user.id}: {message.text}")
+            logging.info(f"ℹ️ Обработано текстовое сообщение от {chat_id}")
+        
+        # ============================================================
+        # ОТПРАВКА ОТВЕТА
+        # ============================================================
+        
+        if response_text:
+            bot.send_message(chat_id, response_text)
+            logging.info(f"✅ Ответ отправлен пользователю {chat_id}")
+        
+        return 'OK', 200
+        
     except Exception as e:
-        logging.error(f"❌ Ошибка в echo_all: {e}")
-        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
+        logging.error(f"❌ Ошибка в webhook: {e}")
+        return 'Error', 500
 
 # ============================================================
 # API ЭНДПОИНТЫ
@@ -161,37 +157,6 @@ def home():
         "message": "HabitMon API работает!",
         "bot": "Telegram бот запущен и готов к работе"
     })
-
-# ============================================================
-# WEBHOOK (исправленный — без прямого ответа)
-# ============================================================
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    try:
-        if request.headers.get('content-type') == 'application/json':
-            json_string = request.get_data().decode('utf-8')
-            update = telebot.types.Update.de_json(json_string)
-            
-            # Логируем, что пришло от Telegram
-            if update.message:
-                text = update.message.text
-                chat_id = update.message.chat.id
-                logging.info(f"📝 Получено сообщение: '{text}' от {chat_id}")
-            
-            # Запускаем обработчики
-            bot.process_new_updates([update])
-            
-            return 'OK', 200
-        else:
-            return 'Unsupported content type', 400
-    except Exception as e:
-        logging.error(f"❌ Ошибка в webhook: {e}")
-        return 'Error processing webhook', 500
-
-# ============================================================
-# ДОПОЛНИТЕЛЬНЫЕ API
-# ============================================================
 
 @app.route('/api/state', methods=['POST'])
 def get_state():
