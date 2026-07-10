@@ -30,6 +30,15 @@ else:
 # Инициализация бота
 bot = telebot.TeleBot(bot_token)
 
+# ТЕСТОВЫЙ ОБРАБОТЧИК - ВРЕМЕННЫЙ (для диагностики)
+@bot.message_handler(func=lambda message: True)
+def test_handler(message):
+    try:
+        logging.info(f"🔵 ТЕСТОВЫЙ ОБРАБОТЧИК СРАБОТАЛ! Текст: {message.text}")
+        bot.send_message(message.chat.id, f"✅ Я получил твое сообщение: {message.text}")
+    except Exception as e:
+        logging.error(f"❌ Ошибка в test_handler: {e}")
+
 # Обработчик команды /start
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -123,27 +132,6 @@ def send_stats(message):
         logging.error(f"❌ Ошибка в send_stats: {e}")
         bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
 
-# Обработчик текстовых сообщений (если пользователь написал что-то другое)
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-    try:
-        response_text = f"""
-🤔 Я тебя не совсем понял.
-
-Ты написал: "{message.text}"
-
-Чтобы я понимал твои команды, используй кнопки меню или команды:
-/start - Начать
-/help - Помощь
-/menu - Меню
-/stats - Статистика
-"""
-        bot.send_message(message.chat.id, response_text)
-        logging.info(f"ℹ️ Сообщение от {message.from_user.id}: {message.text}")
-    except Exception as e:
-        logging.error(f"❌ Ошибка в echo_all: {e}")
-        bot.send_message(message.chat.id, "Извините, произошла ошибка. Попробуйте позже.")
-
 # ============================================================
 # API ЭНДПОИНТЫ
 # ============================================================
@@ -164,6 +152,13 @@ def webhook():
             logging.info(f"📩 Получен JSON от Telegram: {json_string[:200]}...")
             
             update = telebot.types.Update.de_json(json_string)
+            
+            # Логируем текст сообщения
+            if update.message:
+                text = update.message.text
+                logging.info(f"📝 Текст сообщения: '{text}'")
+                logging.info(f"👤 От пользователя: {update.message.from_user.id}")
+            
             bot.process_new_updates([update])
             
             logging.info(f"✅ Webhook обработал запрос от Telegram")
